@@ -6,8 +6,15 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/urbanriskmap/cognicity-notification-service.git"
+  },
   "author": "Maanasa Priyaa",
-  "license": "MIT",
+  "license": "GPL-3.0",
+  "bugs": {
+    "url": "https://github.com/urbanriskmap/cognicity-notification-service/issues"
+  },
   "dependencies": {
     "aws-sdk": "^2.28.0",
     "dotenv": "^4.0.0",
