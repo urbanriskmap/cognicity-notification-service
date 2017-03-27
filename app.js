@@ -22,40 +22,47 @@ app.listen(app.get('port'), function() {
      }
      // Return the listen notification
      client.on('notification', function(msg) {
-       try{
-        console.log('Msg: ' + msg);
-        console.log('Payload: ' + msg.payload);
-        var notification = JSON.parse(msg.payload);
-        console.log('Parse successful');
-        if (notification.cards.network === 'facebook'){
-          console.log('Received card submission');
+       try {
+         console.log('Msg: ' + msg);
+         console.log('Payload: ' + msg.payload);
+         var notification = JSON.parse(msg.payload);
+         console.log('Parse successful');
 
-          //Construct JSON with relevant details for a confirmation response to be published to SNS topic
-          var jsonMessage = {
-            "language" : notification.cards.language,
-            "username" : notification.cards.username,
-            "implementation_area": notification.cards.report_impl_area,
-            "report_id": notification.cards.report_id
-          };
+         var topicName = "";
+         if (notification.cards.network === 'facebook'){
+           console.log('Received card submission via Facebook');
+           topicName = "Facebook";
+         } else if (notification.cards.network === 'telegram') {
+           console.log('Received card submission via Telegram');
+           topicName = "Telegram";
+         }
 
-          //Construct message payload
-          var params = {
-            Message: JSON.stringify(jsonMessage),
-            TopicArn: "arn:aws:sns:" + process.env.AWS_REGION + ":" + process.env.ACCOUNTID + ":Facebook"
-          };
-          console.log("Publishing to Facebook SNS topic");
-          sns.publish(params, function(err, data) {
-            if (err) {
-              console.log("Error on publishing message to topic Facebook");
-              console.log(err);
-            } else {
-              console.log("Message published to Facebook SNS topic successfully")
-              console.log(data);
-            }
-          });
-        }
-       }
-       catch (e){
+         //Construct JSON with relevant details for a confirmation response to be published to SNS topic
+         var jsonMessage = {
+           "language" : notification.cards.language,
+           "username" : notification.cards.username,
+           "implementation_area": notification.cards.report_impl_area,
+           "report_id": notification.cards.report_id
+         };
+         if(topicName !== "")
+         {
+           //Construct message payload
+           var params = {
+             Message: JSON.stringify(jsonMessage),
+             TopicArn: "arn:aws:sns:" + process.env.AWS_REGION + ":" + process.env.ACCOUNTID + ":" + topicName
+           };
+           console.log("Publishing to " + topicName + " SNS topic");
+           sns.publish(params, function(err, data) {
+             if (err) {
+               console.log("Error on publishing message to topic" + topicName);
+               console.log(err);
+             } else {
+               console.log("Message published to " + topicName + " SNS topic successfully")
+               console.log(data);
+             }
+           });
+         }
+       } catch (e){
          console.log('Error processing listen notification from database\n'+e);
        }
      });
