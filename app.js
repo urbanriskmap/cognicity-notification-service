@@ -35,6 +35,9 @@ app.listen(app.get('port'), function() {
          } else if (notification.cards.network === 'telegram') {
            console.log('Received card submission via Telegram');
            topicName = "Telegram";
+         } else if (notification.cards.network === 'twitter') {
+           console.log('Received card submission via Twitter');
+           topicName = "Twitter";
          }
 
          //Construct JSON with relevant details for a confirmation response to be published to SNS topic
