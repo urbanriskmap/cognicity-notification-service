@@ -1,7 +1,10 @@
 // External modules
 const pg = require('pg');
 require('dotenv').config({silent:true});
+const fs = require('fs');
+const path = require('path');
 const AWS = require('aws-sdk');
+const logger = require('winston');
 AWS.config.update({region:process.env.AWS_REGION});
 
 var sns = new AWS.SNS();
@@ -17,7 +20,7 @@ logparams.logDirectory = process.env.LOG_DIR; // Set this to a full path to a di
 logparams.filename = 'cognicity-notification-service'; // base filename to use
 
 // Set up logging
-var logPath = ( config.logger.logDirectory ? config.logger.logDirectory : __dirname );
+var logPath = ( logparams.logDirectory ? logparams.logDirectory : __dirname );
 // Check that log file directory can be written to
 try {
 	fs.accessSync(logPath, fs.W_OK);
@@ -26,16 +29,16 @@ try {
 	throw e;
 }
 logPath += path.sep;
-logPath += config.logger.filename + ".log";
+logPath += logparams.filename + ".log";
 
 logger
 	// Configure custom File transport to write plain text messages
 	.add(logger.transports.File, {
 		filename: logPath, // Write to projectname.log
 		json: false, // Write in plain text, not JSON
-		maxsize: config.logger.maxFileSize, // Max size of each file
-		maxFiles: config.logger.maxFiles, // Max number of files
-		level: config.logger.level // Level of log messages
+		maxsize: logparams.maxFileSize, // Max size of each file
+		maxFiles: logparams.maxFiles, // Max number of files
+		level: logparams.level // Level of log messages
 	})
 	// Console transport is no use to us when running as a daemon
 	.remove(logger.transports.Console);
