@@ -6,7 +6,9 @@ AWS.config.update({region:process.env.AWS_REGION});
 
 var sns = new AWS.SNS();
 
-pg.connect(process.env.PG_CON, function(err, client, done) {
+const conString = 'postgres://'+process.env.PGUSER+':'+process.env.PGPASSWORD+'@'+process.env.PGHOST+':'+process.env.PGPORT+'/'+process.env.PGDATABASE;
+
+pg.connect(conString, function(err, client, done) {
   console.log("Database connection successful");
   if (err){
     console.log("database err: " + err);
