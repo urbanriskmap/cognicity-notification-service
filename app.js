@@ -4,6 +4,7 @@ require('dotenv').config({silent:true});
 const fs = require('fs');
 const path = require('path');
 const AWS = require('aws-sdk');
+const logger = require('winston');
 AWS.config.update({region:process.env.AWS_REGION});
 
 var sns = new AWS.SNS();
