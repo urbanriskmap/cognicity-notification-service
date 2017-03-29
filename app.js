@@ -1,6 +1,7 @@
 // External modules
 const pg = require('pg');
 require('dotenv').config({silent:true});
+const fs = require('fs');
 const AWS = require('aws-sdk');
 AWS.config.update({region:process.env.AWS_REGION});
 
