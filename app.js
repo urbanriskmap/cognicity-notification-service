@@ -112,7 +112,9 @@ pg.connect(conString, function(err, client, done) {
     done();
   }
   // Return the listen notification
+
   client.on('notification', handle(msg));
+
   // Initiate the listen query
   client.query("LISTEN watchers");
 });
