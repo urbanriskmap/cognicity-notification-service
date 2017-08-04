@@ -1,15 +1,29 @@
-// External modules
-const pg = require('pg');
-require('dotenv').config({silent:true});
-const fs = require('fs');
-const path = require('path');
-const AWS = require('aws-sdk');
-const logger = require('winston');
-AWS.config.update({region:process.env.AWS_REGION});
+'use strict';
+
+var _bluebird = require('bluebird');
+
+var _bluebird2 = _interopRequireDefault(_bluebird);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+var pgp = require('pg-promise')({
+  promiseLib: _bluebird2.default
+}); // External modules
+//const pg = require('pg');
+
+require('dotenv').config({ silent: true });
+var fs = require('fs');
+var path = require('path');
+var AWS = require('aws-sdk');
+var logger = require('winston');
+AWS.config.update({ region: process.env.AWS_REGION });
 
 var sns = new AWS.SNS();
 
-const conString = 'postgres://'+process.env.PGUSER+':'+process.env.PGPASSWORD+'@'+process.env.PGHOST+':'+process.env.PGPORT+'/'+process.env.PGDATABASE;
+var conString = 'postgres://' + process.env.PGUSER + ':' + process.env.PGPASSWORD + '@' + process.env.PGHOST + ':' + process.env.PGPORT + '/' + process.env.PGDATABASE;
+console.log(conString);
+
+var db = pgp(conString);
 
 // Logging configuration
 logparams = {};
@@ -20,41 +34,54 @@ logparams.logDirectory = process.env.LOG_DIR; // Set this to a full path to a di
 logparams.filename = 'cognicity-notification-service'; // base filename to use
 
 // Set up logging
-var logPath = ( logparams.logDirectory ? logparams.logDirectory : __dirname );
+var logPath = logparams.logDirectory ? logparams.logDirectory : __dirname;
 // Check that log file directory can be written to
 try {
-	fs.accessSync(logPath, fs.W_OK);
+  fs.accessSync(logPath, fs.W_OK);
 } catch (e) {
-	console.log( "Log directory '" + logPath + "' cannot be written to"  );
-	throw e;
+  console.log("Log directory '" + logPath + "' cannot be written to");
+  throw e;
 }
 logPath += path.sep;
 logPath += logparams.filename + ".log";
 
 logger
-	// Configure custom File transport to write plain text messages
-	.add(logger.transports.File, {
-		filename: logPath, // Write to projectname.log
-		json: false, // Write in plain text, not JSON
-		maxsize: logparams.maxFileSize, // Max size of each file
-		maxFiles: logparams.maxFiles, // Max number of files
-		level: logparams.level // Level of log messages
-	})
-	// Console transport is no use to us when running as a daemon
-	.remove(logger.transports.Console);
+// Configure custom File transport to write plain text messages
+.add(logger.transports.File, {
+  filename: logPath, // Write to projectname.log
+  json: false, // Write in plain text, not JSON
+  maxsize: logparams.maxFileSize, // Max size of each file
+  maxFiles: logparams.maxFiles, // Max number of files
+  level: logparams.level // Level of log messages
+})
+// Console transport is no use to us when running as a daemon
+.remove(logger.transports.Console);
 
 // FIXME This is a workaround for https://github.com/flatiron/winston/issues/228
 // If we exit immediately winston does not get a chance to write the last log message.
 // So we wait a short time before exiting.
 function exitWithStatus(exitStatus) {
-	logger.info( "Exiting with status " + exitStatus );
-	setTimeout( function() {
-		process.exit(exitStatus);
-	}, 500 );
+  logger.info("Exiting with status " + exitStatus);
+  setTimeout(function () {
+    process.exit(exitStatus);
+  }, 500);
 }
 
 logger.info("Application starting...");
 
+var sco = void 0;
+
+db.connect().then(function (obj) {
+  sco = obj;
+  sco.client.on('notification', function (data) {
+    console.log('Received', data);
+  });
+  sco.none('LISTEN $1~', 'alerts');
+}).catch(function (error) {
+  console.log('Error: ' + error);
+});
+
+/*
 pg.connect(conString, function(err, client, done) {
   logger.info("Database connection successful");
   if (err){
@@ -63,7 +90,9 @@ pg.connect(conString, function(err, client, done) {
   }
   // Return the listen notification
   client.on('notification', function(msg) {
-    try {
+		console.log(msg)
+
+    /*try {
       logger.info('Msg: ' + msg);
       logger.info('Payload: ' + msg.payload);
       var notification = JSON.parse(msg.payload);
@@ -112,4 +141,7 @@ pg.connect(conString, function(err, client, done) {
   });
   // Initiate the listen query
   client.query("LISTEN watchers");
-});
+	client.query("LISTEN alerts");
+
+});*/
+//# sourceMappingURL=app.js.map
