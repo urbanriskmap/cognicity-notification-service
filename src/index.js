@@ -3,10 +3,10 @@ import Promise from 'bluebird'; // Promise support
 const pgp = require('pg-promise')({ // PG
 	promiseLib: Promise
 });
-const fs = require('fs');
-const path = require('path');
-const AWS = require('aws-sdk');
-import logger from 'winston'; // logging
+import fs from 'fs';
+import path from 'path';
+import AWS from 'aws-sdk';
+import logger from 'winston';
 
 import { processAlert } from './channels/alerts';
 import { processReply } from './channels/replies';
@@ -52,15 +52,22 @@ logger
 	// Console transport is no use to us when running as a daemon
 	.remove(logger.transports.Console);
 
-// FIXME This is a workaround for https://github.com/flatiron/winston/issues/228
-// If we exit immediately winston does not get a chance to write the last log message.
-// So we wait a short time before exiting.
-function exitWithStatus(exitStatus) {
-	logger.info( "Exiting with status " + exitStatus );
-	setTimeout( function() {
-		process.exit(exitStatus);
-	}, 500 );
-}
+	// If we exit immediately winston does not get chance to write last log message
+	const exitWithStatus = (status) => {
+		logger.info(`Exiting with status ${status}`);
+		setTimeout(() => process.exit(status), 500);
+	};
+
+	// Catch kill and interrupt signals and log a clean exit status
+	process
+		.on('SIGTERM', () => {
+			logger.info('SIGTERM: Application shutting down');
+			exitWithStatus(0);
+		})
+		.on('SIGINT', () => {
+			logger.info('SIGINT: Application shutting down');
+			exitWithStatus(0);
+		});
 
 logger.info("Application starting...");
 
@@ -71,10 +78,15 @@ db.connect()
 		sco = obj;
 		sco.client.on('notification', data => {
 			if (data.channel === 'alerts'){
-				processAlert(data);
+				processAlert(data)
+					.then(() => logger.info('Processed notification from alert channel'))
+					.catch((err) => logger.error('Error processing notification from alert channel: ' + err))
 			}
 			else if (data.channel === 'watchers')
-				processReply(data);
+				processReply(data)
+					.then(() => logger.info('Processed notification from replies channel'))
+					.catch((err) => logger.error('Error processing notification from replies channel: ' + err))
+
 			else {
 				logger.info("Received notification from unknown channel: " + JSON.stringify(data));
 			}
@@ -83,69 +95,5 @@ db.connect()
 		sco.none('LISTEN $1~', 'watchers');
 	})
 	.catch(error => {
-		console.log('Error: '+error);
+		console.log('Error listening for database notifications: '+error);
 	})
-
-/*
-pg.connect(conString, function(err, client, done) {
-  logger.info("Database connection successful");
-  if (err){
-    logger.error("database err: " + err);
-    done();
-  }
-  // Return the listen notification
-  client.on('notification', function(msg) {
-		console.log(msg)
-
-    /*try {
-      logger.info('Msg: ' + msg);
-      logger.info('Payload: ' + msg.payload);
-      var notification = JSON.parse(msg.payload);
-      logger.info('Parse successful');
-
-      var topicName = "";
-      if (notification.cards.network === 'facebook'){
-        logger.info('Received card submission via Facebook');
-        topicName = "Facebook";
-      } else if (notification.cards.network === 'telegram') {
-        logger.info('Received card submission via Telegram');
-        topicName = "Telegram";
-      } else if (notification.cards.network === 'twitter') {
-        logger.info('Received card submission via Twitter');
-        topicName = "Twitter";
-      }
-
-      //Construct JSON with relevant details for a confirmation response to be published to SNS topic
-      var jsonMessage = {
-        "language" : notification.cards.language,
-        "username" : notification.cards.username,
-        "implementation_area": notification.cards.report_impl_area,
-        "report_id": notification.cards.report_id
-      };
-      if(topicName !== "")
-      {
-        //Construct message payload
-        var params = {
-          Message: JSON.stringify(jsonMessage),
-          TopicArn: "arn:aws:sns:" + config.AWS_REGION + ":" + config.ACCOUNTID + ":" + topicName
-        };
-        logger.info("Publishing to " + topicName + " SNS topic");
-        sns.publish(params, function(err, data) {
-          if (err) {
-            logger.error("Error on publishing message to topic" + topicName);
-            logger.error(err);
-          } else {
-            logger.info("Message published to " + topicName + " SNS topic successfully");
-            logger.debug(data);
-          }
-        });
-      }
-    } catch (e){
-      logger.error('Error processing listen notification from database\n'+e);
-    }
-  });
-  // Initiate the listen query
-  client.query("LISTEN watchers");
-	client.query("LISTEN alerts");
-
-});*/
