@@ -82,7 +82,7 @@ db.connect()
 				processAlert(data)
 					.then((data) => {
 						logger.info('Processed notification from alert channel')
-						sns.publish(data.message, data.message)
+						sns.publish(data.topic, data.message)
 					})
 					.catch((err) => logger.error('Error processing notification from alert channel: ' + err))
 			}
