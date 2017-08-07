@@ -5,19 +5,14 @@ const pgp = require('pg-promise')({ // PG
 });
 import fs from 'fs';
 import path from 'path';
-import AWS from 'aws-sdk';
 import logger from 'winston';
 
+// Config
+import config from './config';
+// Submodules
 import { processAlert } from './channels/alerts';
 import { processReply } from './channels/replies';
-
-import config from './config';
-
-// Set globals
-AWS.config.update({region:config.AWS_REGION});
-
-// Init AWS SNS
-var sns = new AWS.SNS();
+import SNS from './sns';
 
 // Init database
 const conString = 'postgres://'+config.PGUSER+':'+config.PGPASSWORD+'@'+config.PGHOST+':'+config.PGPORT+'/'+config.PGDATABASE;
@@ -73,18 +68,28 @@ logger.info("Application starting...");
 
 let sco; // shared connection object
 
+// Init SNS
+const sns = new SNS(logger);
+
 db.connect()
 	.then(obj => {
 		sco = obj;
 		sco.client.on('notification', data => {
+			console.log(data);
+			let payload = JSON.parse(data.payload)
+
 			if (data.channel === 'alerts'){
-				processAlert(data)
+				processAlert(payload)
 					.then(() => logger.info('Processed notification from alert channel'))
 					.catch((err) => logger.error('Error processing notification from alert channel: ' + err))
 			}
 			else if (data.channel === 'watchers')
-				processReply(data)
-					.then(() => logger.info('Processed notification from replies channel'))
+				processReply(payload)
+					.then((data) => {
+						console.log('topic, message:', data)
+						logger.info('Processed notification from replies channel');
+						sns.publish('test-cognicity', data.message);
+					})
 					.catch((err) => logger.error('Error processing notification from replies channel: ' + err))
 
 			else {

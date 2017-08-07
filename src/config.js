@@ -9,6 +9,7 @@ require('dotenv').config({silent:true});
 
 export default {
   APP_NAME: process.env.APP_NAME || 'cognicity-notification-service',
+  AWS_ACCOUNTID: process.env.AWS_ACCOUNTID || 'account_id',
   AWS_REGION: process.env.AWS_REGION || 'ap-southeast-1',
   PGCHANNEL_ALERTS: process.env.PGCHANNEL_ALERTS || 'alerts',
   PGCHANNEL_REPLIES: process.env.PGCHANNEL_REPLIES || 'replies',

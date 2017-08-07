@@ -1,11 +1,12 @@
 import Promise from 'bluebird';
 /**
+ * Process PostgreSQL Alert Notification
  * @function processAlert
- * @param {Object} notification PostgreSQL NOTIFY Payload
+ * @param {Object} payload PostgreSQL NOTIFY payload
  * @returns {Object} Promise - whether the notification was successfully issued to AWS SNS
  **/
-const processAlert = ( notification ) => new Promise ((resolve, reject) => {
-  console.log(notification);
+const processAlert = ( payload ) => new Promise ((resolve, reject) => {
+  console.log(JSON.stringify(payload));
   resolve(null);
 });
 
