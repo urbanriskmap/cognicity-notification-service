@@ -79,8 +79,11 @@ db.connect()
 			let payload = JSON.parse(data.payload)
 
 			if (data.channel === 'alerts'){
-				processAlert(payload)
-					.then(() => logger.info('Processed notification from alert channel'))
+				processAlert(data)
+					.then((data) => {
+						logger.info('Processed notification from alert channel')
+						sns.publish(data.message, data.message)
+					})
 					.catch((err) => logger.error('Error processing notification from alert channel: ' + err))
 			}
 			else if (data.channel === 'watchers')

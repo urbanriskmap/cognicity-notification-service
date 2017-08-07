@@ -14,6 +14,7 @@ AWS.config.update({region:config.AWS_REGION});
 // Init AWS SNS
 var sns = new AWS.SNS();
 
+// TODO make this module use promises.
 module.exports = class SNS {
   /**
    * Setup the SNS object to user specified logger
