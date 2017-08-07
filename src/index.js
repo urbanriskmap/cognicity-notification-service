@@ -1,51 +1,53 @@
 // External modules
-//const pg = require('pg');
-import Promise from 'bluebird';
-const pgp = require('pg-promise')({
+import Promise from 'bluebird'; // Promise support
+const pgp = require('pg-promise')({ // PG
 	promiseLib: Promise
 });
-require('dotenv').config({silent:true});
 const fs = require('fs');
 const path = require('path');
 const AWS = require('aws-sdk');
-const logger = require('winston');
-AWS.config.update({region:process.env.AWS_REGION});
+import logger from 'winston'; // logging
 
+import { processAlert } from './channels/alerts';
+import { processReply } from './channels/replies';
+
+import config from './config';
+
+// Set globals
+AWS.config.update({region:config.AWS_REGION});
+
+// Init AWS SNS
 var sns = new AWS.SNS();
 
-const conString = 'postgres://'+process.env.PGUSER+':'+process.env.PGPASSWORD+'@'+process.env.PGHOST+':'+process.env.PGPORT+'/'+process.env.PGDATABASE;
-console.log(conString);
-
+// Init database
+const conString = 'postgres://'+config.PGUSER+':'+config.PGPASSWORD+'@'+config.PGHOST+':'+config.PGPORT+'/'+config.PGDATABASE;
 let db = pgp(conString);
 
-// Logging configuration
-let logparams = {};
-logparams.level = process.env.LOG_LEVEL; // What level to log at; info, verbose or debug are most useful. Levels are (npm defaults): silly, debug, verbose, info, warn, error.
-logparams.maxFileSize = 1024 * 1024 * 100; // Max file size in bytes of each log file; default 100MB
-logparams.maxFiles = 10; // Max number of log files kept
-logparams.logDirectory = process.env.LOG_DIR; // Set this to a full path to a directory - if not set logs will be written to the application directory.
-logparams.filename = 'cognicity-notification-service'; // base filename to use
+// Set the default logging level
+logger.level = config.LOG_LEVEL;
 
-// Set up logging
-var logPath = ( logparams.logDirectory ? logparams.logDirectory : __dirname );
 // Check that log file directory can be written to
 try {
-	fs.accessSync(logPath, fs.W_OK);
+	if (config.LOG_DIR !== '') {
+		fs.accessSync(config.LOG_DIR, fs.W_OK);
+	}
+	logger.info(`Logging to ${config.LOG_DIR !== '' ? config.LOG_DIR :
+							'current working directory' }`);
 } catch (e) {
-	console.log( "Log directory '" + logPath + "' cannot be written to"  );
-	throw e;
+	// If we cannot write to the desired directory then log tocurrent directory
+	logger.info(`Cannot log to '${config.LOG_DIR}',
+							logging to current working directory instead`);
+	config.LOG_DIR = '';
 }
-logPath += path.sep;
-logPath += logparams.filename + ".log";
 
 logger
 	// Configure custom File transport to write plain text messages
 	.add(logger.transports.File, {
-		filename: logPath, // Write to projectname.log
-		json: false, // Write in plain text, not JSON
-		maxsize: logparams.maxFileSize, // Max size of each file
-		maxFiles: logparams.maxFiles, // Max number of files
-		level: logparams.level // Level of log messages
+		filename: path.join(config.LOG_DIR, `${config.APP_NAME}.log`),
+		json: config.LOG_JSON, // Write in plain text, not JSON
+		maxsize: config.LOG_MAX_FILE_SIZE, // Max size of each file
+		maxFiles: config.LOG_MAX_FILES, // Max number of files
+		level: config.LOG_LEVEL // Level of log messages
 	})
 	// Console transport is no use to us when running as a daemon
 	.remove(logger.transports.Console);
@@ -62,13 +64,20 @@ function exitWithStatus(exitStatus) {
 
 logger.info("Application starting...");
 
-let sco;
+let sco; // shared connection object
 
 db.connect()
 	.then(obj => {
 		sco = obj;
 		sco.client.on('notification', data => {
-			console.log('Received', data);
+			if (data.channel === 'alerts'){
+				processAlert(data);
+			}
+			else if (data.channel === 'watchers')
+				processReply(data);
+			else {
+				logger.info("Received notification from unknown channel: " + JSON.stringify(data));
+			}
 		});
 		sco.none('LISTEN $1~', 'alerts');
 		sco.none('LISTEN $1~', 'watchers');
@@ -118,7 +127,7 @@ pg.connect(conString, function(err, client, done) {
         //Construct message payload
         var params = {
           Message: JSON.stringify(jsonMessage),
-          TopicArn: "arn:aws:sns:" + process.env.AWS_REGION + ":" + process.env.ACCOUNTID + ":" + topicName
+          TopicArn: "arn:aws:sns:" + config.AWS_REGION + ":" + config.ACCOUNTID + ":" + topicName
         };
         logger.info("Publishing to " + topicName + " SNS topic");
         sns.publish(params, function(err, data) {
