@@ -72,14 +72,14 @@ pg.connect(conString, function(err, client, done) {
       var topicName = "";
       if (notification.cards.network === 'facebook'){
         logger.info('Received card submission via Facebook');
-        topicName = "Facebook";
+	topicName = process.env.FACEBOOKSNS;
       } else if (notification.cards.network === 'telegram') {
         logger.info('Received card submission via Telegram');
-        topicName = "Telegram";
+	topicName = process.env.TELEGRAMSNS;
       } else if (notification.cards.network === 'twitter') {
         logger.info('Received card submission via Twitter');
-        topicName = "Twitter";
-      }
+	topicName = process.env.TWITTERSNS;
+      } 
 
       //Construct JSON with relevant details for a confirmation response to be published to SNS topic
       var jsonMessage = {
