@@ -1,3 +1,6 @@
+## DEPRECATED
+Later versions of [cognicity-server](https://github.com/urbanriskmap/cognicity-server) handle notifications internally.
+
 # cognicity-notification-service
 This service listens in on Postgres notifications and pushes confirmation response to SNS topics based on Source network type
 
